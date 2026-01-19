@@ -1,0 +1,6 @@
+build==1.4.0
+numpy==1.26.3
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.7.1
+swig==4.4.1
+mkl-devel==2025.3.0

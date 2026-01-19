@@ -1,0 +1,60 @@
+name: Build Faiss Wheels
+
+on:
+  workflow_dispatch:
+    inputs:
+      python-version:
+        description: 'Python version to build wheels for (e.g.: 3.10, 3.12)'
+        required: true
+        type: string
+        default: '3.12'
+
+jobs:
+  job1:
+    runs-on: windows-2025
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python ${{ github.event.inputs.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ github.event.inputs.python-version }}
+          cache: 'pip'
+      
+      - name: Install python build dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          
+      - name: Install CUDA Toolkit
+        uses: Jimver/cuda-toolkit@v0.2.29
+        with:
+          cuda: '12.9.1'
+          method: 'local'
+
+      - name: Enable longpaths in git
+        if: ${{ runner.os == 'Windows' }}
+        run: git config --global core.longpaths true
+
+      - name: Clone faiss repository
+        run: git clone --branch fix/v1.13.2-win-gpu https://github.com/pekat-vision/faiss.git
+      
+      - name: Build Faiss
+        run: |
+          pwsh -Command ./build.ps1
+      
+      - name: Build Faiss Wheels
+        run: |
+          Push-Location faiss\build\faiss\python
+          python -m build --wheel
+          ls dist\
+          Pop-Location
+      
+      - name: Upload Faiss Wheels
+        uses: actions/upload-artifact@v6
+        with:
+          name: faiss-wheels
+          path: faiss\build\faiss\python\dist\*.whl
+          compression-level: 0
+      
+
