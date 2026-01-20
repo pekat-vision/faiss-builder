@@ -16,22 +16,64 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Set up Python ${{ github.event.inputs.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ github.event.inputs.python-version }}
-          cache: 'pip'
+      # - name: Set up Python ${{ github.event.inputs.python-version }}
+      #   uses: actions/setup-python@v6
+      #   with:
+      #     python-version: ${{ github.event.inputs.python-version }}
+      #     cache: 'pip'
       
-      - name: Install python build dependencies
-        run: |
-          python -m pip install -r requirements.txt
-          
-      - name: Install CUDA Toolkit
-        uses: Jimver/cuda-toolkit@v0.2.29
-        with:
-          cuda: '12.9.1'
-          method: 'local'
+      # - name: Install python build dependencies
+      #   run: |
+      #     python -m pip install -r requirements.txt
 
+      - name: Install CUDA Toolkit
+        run: |
+          # 1. Download
+          
+          curl -k -L "https://developer.download.nvidia.com/compute/cuda/12.9.1/local_installers/cuda_12.9.1_576.57_windows.exe" --output _cuda_installer.exe
+          
+          # 2. Install (with Error Checking)
+          # We use -PassThru to get the process object so we can check the ExitCode
+          $process = PowerShell -Command "Start-Process -FilePath `"_cuda_installer.exe`" -Wait -NoNewWindow -PassThru"
+
+          if ($process.ExitCode -ne 0) {
+            Write-Error "CUDA Installer failed with exit code $($process.ExitCode)"
+            exit 1
+          }
+
+          # 3. Manually Add CUDA to GITHUB_PATH
+          # The installer updates the system PATH, but the current shell won't see it.
+          # We must append the expected bin path to $env:GITHUB_PATH for subsequent steps.
+          $cudaBinPath = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\bin"
+
+          echo "Searching for installed CUDA..."
+          Get-ChildItem -Recurse C:\ -Filter CUDA -ErrorAction SilentlyContinue
+          
+          if (Test-Path $cudaBinPath) {
+            echo "$cudaBinPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            Write-Host "CUDA Bin path added to GITHUB_PATH: $cudaBinPath"
+          } else {
+            Write-Error "Expected CUDA path does not exist: $cudaBinPath"
+            exit 1
+          }
+
+      - name: Verify NVCC Installation
+        run: |
+          # 1. Verify Command Availability
+          # Because we updated GITHUB_PATH in the previous step, 'nvcc' should now be callable.
+          nvcc --version
+
+          # 2. (Optional) Compile a dummy file to ensure libraries are linked
+          echo "int main() { return 0; }" > test.cu
+          nvcc test.cu -o test.exe
+          if (Test-Path test.exe) {
+            Write-Host "NVCC compilation check passed."
+          } else {
+            Write-Error "NVCC compilation check failed."
+            exit 1
+          }
+
+      
       - name: Enable longpaths in git
         if: ${{ runner.os == 'Windows' }}
         run: git config --global core.longpaths true

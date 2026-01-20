@@ -7,8 +7,21 @@ if (-not $env:CUDA_PATH) {
 }
 $env:PATH = "$env:CUDA_PATH\bin;$env:PATH"  # $env:CUDA_PATH set by cuda action
 
+$nvccPath = "$env:CUDA_PATH\bin\nvcc.exe"
+
+Write-Host "Detected CUDA_PATH: $env:CUDA_PATH"
+if (-not (Test-Path $nvccPath)) {
+    Write-Error "NVCC executable not found at $nvccPath"
+    Write-Host "Listing bin directory content:"
+    Get-ChildItem "$env:CUDA_PATH\bin"
+    exit 1
+}
+
+# Add CUDA bin to path for runtime DLLs
+$env:PATH = "$env:CUDA_PATH\bin;$env:PATH"
+
+
 # Use MKL from virtual environment
-# $pythonLibrary = "$PSScriptRoot\.venv\Library"
 $pythonLibrary = "$env:pythonLocation\Library"
 
 $env:MKLROOT = $pythonLibrary
@@ -18,6 +31,7 @@ $torchLib = python -c "import torch; import os; print(os.path.join(os.path.dirna
 
 cmake -G "Ninja" -B build . `
     -DCUDAToolkit_ROOT="$env:CUDA_PATH" `
+    -DCMAKE_CUDA_COMPILER="$nvccPath" `
     -DCMAKE_PREFIX_PATH="$torchLib;$pythonLibrary;$env:CUDA_PATH\lib\cmake" `
     -DFAISS_ENABLE_GPU=ON `
     -DFAISS_ENABLE_PYTHON=ON `
