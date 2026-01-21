@@ -26,22 +26,40 @@ jobs:
         run: |
           python -m pip install -r requirements.txt
           
-      - name: Install CUDA Toolkit
-        uses: Jimver/cuda-toolkit@v0.2.29
-        with:
-          cuda: '12.9.1'
-          method: 'local'
+      - name: Find mkl
+        continue-on-error: true
+        run: |
+          python spam.py
+      
+      - name: Find mkl with pwsh
+        run: |
+          Get-ChildItem -Recurse -Filter mkl_avx2.2.dll $(python -m site --user-base) -ErrorAction SilentlyContinue
+          Get-ChildItem -Recurse -Filter mkl_avx2.2.dll $(python -m site --user-site) -ErrorAction SilentlyContinue
+          Get-ChildItem -Recurse -Filter mkl_avx2.2.dll $(python -c "import sys; print(sys.prefix)") -ErrorAction SilentlyContinue
 
       - name: Enable longpaths in git
         if: ${{ runner.os == 'Windows' }}
         run: git config --global core.longpaths true
 
       - name: Clone faiss repository
-        run: git clone --branch fix/v1.13.2-win-gpu https://github.com/pekat-vision/faiss.git
+        run: |
+          git clone --branch fix/v1.13.2-win-gpu https://github.com/pekat-vision/faiss.git
+          Push-Location faiss
+          git status
+          git rev-parse --short HEAD
+          Pop-Location
       
+
+      - name: Install CUDA Toolkit
+        uses: Jimver/cuda-toolkit@v0.2.29
+        with:
+          cuda: '12.9.1'
+          method: 'local'
+
       - name: Build Faiss
         run: |
           pwsh -Command ./build.ps1
+      
       
       - name: Build Faiss Wheels
         run: |
