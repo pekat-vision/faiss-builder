@@ -8,10 +8,22 @@ on:
         required: true
         type: string
         default: '3.12'
+      windows-build:
+        description: 'Build Windows wheels'
+        type: boolean
+        default: true
+      linux-build:
+        description: 'Build Linux wheels'
+        type: boolean
+        default: true
+
+        
 
 jobs:
   job1:
     runs-on: windows-2025
+    if: inputs.windows-build == true
+    name: Build Faiss Wheels on Windows
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6

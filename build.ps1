@@ -7,7 +7,7 @@ if (-not $env:CUDA_PATH) {
 }
 $env:PATH = "$env:CUDA_PATH\bin;$env:PATH"  # $env:CUDA_PATH set by cuda action
 
-# Use MKL from virtual environment
+# assume mkl-devel is installed in the virtual environment
 # $pythonLibrary = "$PSScriptRoot\.venv\Library"
 $pythonLibrary = "$env:pythonLocation\Library"
 
